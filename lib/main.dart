@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:gallery_locker/app/features/home/presentation/home_screen.dart';
+import 'features/home/presentation/home_screen.dart';
 
 void main() {
   runApp(const MyApp());
@@ -16,6 +16,7 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       home: HomeScreen(),
     );
   }
