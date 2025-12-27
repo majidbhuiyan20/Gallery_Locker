@@ -1,31 +1,84 @@
+// lib/main.dart
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
-import 'package:gallery_locker/app/views/home_view.dart';
-import 'app/binding/home_binding.dart';
+import 'package:provider/provider.dart';
+import 'features/folder_content/service/media_storage_service.dart';
+import 'features/home/provider/home_provider.dart';
+import 'features/folder_content/provider/media_provider.dart';
+import 'features/security/services/security_service.dart';
+import 'features/security/provider/security_provider.dart';
+import 'features/security/presentation/splash_screen.dart';
+import 'features/security/presentation/pin_login_screen.dart';
+import 'features/home/presentation/home_screen.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
   @override
   Widget build(BuildContext context) {
-    return GetMaterialApp(  // 🔑 Use GetMaterialApp instead of MaterialApp
-      debugShowCheckedModeBanner: false,
-      title: 'Gallery Locker',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-      ),
-      initialRoute: '/home',
-      getPages: [
-        GetPage(
-          name: '/home',
-          page: () => HomeView(),
-          binding: HomeBinding(),
+    return MultiProvider(
+      providers: [
+        // Security Provider
+        ChangeNotifierProvider(
+          create: (_) => SecurityProvider(SecurityService()),
+        ),
+
+        // Home Provider
+        ChangeNotifierProvider(create: (_) => HomeProvider()),
+
+        // Media Provider
+        ChangeNotifierProxyProvider<HomeProvider, MediaProvider>(
+          create: (context) => MediaProvider(MediaStorageService()),
+          update: (context, homeProvider, mediaProvider) {
+            mediaProvider?.setHomeProvider(homeProvider);
+            return mediaProvider!;
+          },
         ),
       ],
+      child: Consumer<SecurityProvider>(
+        builder: (context, securityProvider, child) {
+          return MaterialApp(
+            title: 'Secure Vault',
+            theme: ThemeData.dark().copyWith(
+              scaffoldBackgroundColor: Color(0xFF0F0F1E),
+              appBarTheme: AppBarTheme(
+                backgroundColor: Colors.transparent,
+                elevation: 0,
+                iconTheme: IconThemeData(color: Colors.white),
+              ),
+            ),
+            home: AuthenticationWrapper(),
+            debugShowCheckedModeBanner: false,
+          );
+        },
+      ),
+    );
+  }
+}
+
+class AuthenticationWrapper extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<SecurityProvider>(
+      builder: (context, securityProvider, child) {
+        if (securityProvider.isLoading) {
+          return SplashScreen();
+        }
+
+        // If PIN not set, go to splash which will show setup
+        if (!securityProvider.isPinSet) {
+          return SplashScreen();
+        }
+
+        // If not authenticated, show login
+        if (!securityProvider.isAuthenticated) {
+          return PinLoginScreen();
+        }
+
+        // Authenticated, show home
+        return HomeScreen();
+      },
     );
   }
 }
